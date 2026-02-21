@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caraid - Your AI Companion</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #1a1a2e;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #333;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .new-chat-btn:hover {
+            background: #764ba2;
+        }
+
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .conversation-item {
+            padding: 12px;
+            margin: 5px 0;
+            background: #2a2a3e;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .conversation-item:hover {
+            background: #3a3a4e;
+        }
+
+        .conversation-item.active {
+            background: #667eea;
+        }
+
+        .delete-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            display: flex;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .message-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .retry-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .input-area input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .send-btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .send-btn:hover {
+            background: #764ba2;
+        }
+
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+        }
+
+        .empty-state h2 {
+            margin-bottom: 10px;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                opacity: 0.5;
+            }
+            30% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>Caraid</h1>
+                <button class="new-chat-btn" onclick="createNewConversation()">+ New Chat</button>
+            </div>
+            <div class="conversations-list" id="conversationsList"></div>
+        </div>
+
+        <div class="main-content">
+            <div class="chat-area" id="chatArea">
+                <div class="empty-state">
+                    <h2>Start a conversation</h2>
+                    <p>Click "New Chat" to begin</p>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Type your message..." 
+                    onkeypress="handleKeyPress(event)"
+                    disabled
+                >
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let conversations = [];
+        let currentConversationId = null;
+        let isLoading = false;
+
+        async function loadConversations() {
+            try {
+                const res = await fetch('/api/conversations');
+                conversations = await res.json();
+                renderConversationsList();
+            } catch (e) {
+                console.error('Failed to load conversations:', e);
+            }
+        }
+
+        async function createNewConversation() {
+            try {
+                const res = await fetch('/api/conversations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: `Chat ${new Date().toLocaleDateString()}` })
+                });
+                const newConv = await res.json();
+                currentConversationId = newConv.id;
+                await loadConversations();
+                renderChat();
+                document.getElementById('messageInput').focus();
+            } catch (e) {
+                console.error('Failed to create conversation:', e);
+            }
+        }
+
+        function selectConversation(id) {
+            currentConversationId = id;
+            renderConversationsList();
+            renderChat();
+            document.getElementById('messageInput').focus();
+        }
+
+        async function deleteConversation(id, e) {
+            e.stopPropagation();
+            if (confirm('Delete this conversation?')) {
+                try {
+                    await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
+                    if (currentConversationId === id) {
+                        currentConversationId = conversations.length > 1 ? conversations[0].id : null;
+                    }
+                    await loadConversations();
+                    renderChat();
+                } catch (e) {
+                    console.error('Failed to delete conversation:', e);
+                }
+            }
+        }
+
+        function renderConversationsList() {
+            const list = document.getElementById('conversationsList');
+            list.innerHTML = '';
+            conversations.forEach(conv => {
+                const div = document.createElement('div');
+                div.className = `conversation-item ${conv.id === currentConversationId ? 'active' : ''}`;
+                div.innerHTML = `
+                    <span style="flex: 1; cursor: pointer;" onclick="selectConversation(${conv.id})">${conv.title}</span>
+                    <button class="delete-btn" onclick="deleteConversation(${conv.id}, event)">Delete</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function renderChat() {
+            const chatArea = document.getElementById('chatArea');
+            const input = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+
+            if (!currentConversationId) {
+                chatArea.innerHTML = `
+                    <div class="empty-state">
+                        <h2>Start a conversation</h2>
+                        <p>Click "New Chat" to begin</p>
+                    </div>
+                `;
+                input.disabled = true;
+                sendBtn.disabled = true;
+                return;
+            }
+
+            const conv = conversations.find(c => c.id === currentConversationId);
+            input.disabled = false;
+            sendBtn.disabled = false;
+
+            if (!conv || conv.messages.length === 0) {
+                chatArea.innerHTML = `
+                    <div class="empty-state">
+                        <h2>Say hello to Caraid</h2>
+                        <p>Start typing to begin</p>
+                    </div>
+                `;
+            } else {
+                chatArea.innerHTML = '';
+                conv.messages.forEach((msg, idx) => {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `message ${msg.sender}`;
+                    msgDiv.innerHTML = `
+                        <div class="message-content">${escapeHtml(msg.content)}</div>
+                        ${msg.sender === 'assistant' && idx === conv.messages.length - 1 ? `
+                            <div class="message-actions">
+                                <button class="retry-btn" onclick="retryMessage()">Retry</button>
+                            </div>
+                        ` : ''}
+                    `;
+                    chatArea.appendChild(msgDiv);
+                });
+            }
+
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+
+            if (!content || !currentConversationId || isLoading) return;
+
+            input.value = '';
+            isLoading = true;
+
+            try {
+                const res = await fetch(`/api/conversations/${currentConversationId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+
+                if (res.ok) {
+                    await loadConversations();
+                    renderChat();
+                }
+            } catch (e) {
+                console.error('Failed to send message:', e);
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        async function retryMessage() {
+            if (!currentConversationId || isLoading) return;
+
+            isLoading = true;
+
+            try {
+                const res = await fetch(`/api/conversations/${currentConversationId}/retry`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (res.ok) {
+                    await loadConversations();
+                    renderChat();
+                }
+            } catch (e) {
+                console.error('Failed to retry message:', e);
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        loadConversations();
+    </script>
+</body>
+</html>
