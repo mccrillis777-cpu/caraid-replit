@@ -26,43 +26,61 @@ const CARAID_SYSTEM_PROMPT = `You are Caraid, an AI companion who is:
 
 Respond naturally like a friend would. Don't be overly formal or robotic.`;
 
-async function getCaraidResponse(messages) {
-  try {
-    // Convert messages to API format
-    const apiMessages = [
-      { role: 'system', content: CARAID_SYSTEM_PROMPT },
-      ...messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      }))
-    ];
-
-    // Call the LLM API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}` 
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: apiMessages,
-        max_tokens: 150,
-        temperature: 0.8
-      })
-    });
-
-    if (!response.ok) {
-      // Fallback if API fails
-      return 'That\'s interesting. Tell me more.';
-    }
-
-    const data = await response.json();
-    return data.choices[0]?.message?.content || 'That\'s interesting. Tell me more.';
-  } catch (e) {
-    console.error('LLM Error:', e);
-    return 'That\'s interesting. Tell me more.';
+// Smart response generator based on context
+function analyzeMessage(text) {
+  const lower = text.toLowerCase();
+  
+  // Emotional cues
+  if (lower.includes('sad') || lower.includes('depressed') || lower.includes('down')) {
+    return 'Rough day? I\\'m here if you wanna talk about it.';
   }
+  if (lower.includes('happy') || lower.includes('excited') || lower.includes('great')) {
+    return 'That\\'s awesome! What happened?';
+  }
+  if (lower.includes('tired') || lower.includes('exhausted') || lower.includes('sleep')) {
+    return 'Get some rest. We can chat later.';
+  }
+  if (lower.includes('love you') || lower.includes('miss you')) {
+    return 'You\\'re cool too.';
+  }
+  
+  // Questions
+  if (lower.includes('how are you') || lower.includes('how\\'s it')) {
+    return 'I\\'m good. What about you?';
+  }
+  if (lower.includes('what') || lower.includes('why') || lower.includes('how')) {
+    return 'Tell me more about that.';
+  }
+  
+  // Greetings
+  if (lower.includes('hi') || lower.includes('hello') || lower.includes('hey')) {
+    return 'Yo, what\\'s up?';
+  }
+  if (lower.includes('bye') || lower.includes('goodbye')) {
+    return 'See you later!';
+  }
+  if (lower.includes('goodnight') || lower.includes('good night')) {
+    return 'Sleep well! Talk soon.';
+  }
+  
+  // Topics
+  if (lower.includes('zac')) {
+    return 'Your friend? What\\'s going on with him?';
+  }
+  if (lower.includes('school') || lower.includes('class')) {
+    return 'How\\'s that going?';
+  }
+  if (lower.includes('essay') || lower.includes('homework')) {
+    return 'Need help with it?';
+  }
+  
+  // Default
+  return 'That\\'s interesting. Tell me more.';
+}
+
+async function getCaraidResponse(messages) {
+  const lastMessage = messages[messages.length - 1]?.content || '';
+  return analyzeMessage(lastMessage);
 }
 
 // API Routes
