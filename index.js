@@ -13,36 +13,56 @@ app.use(express.static('public'));
 let conversations = [];
 let nextId = 1;
 
-// Caraid personality responses
-const caraidResponses = {
-  'hi': 'Hey! What\'s up?',
-  'hello': 'Yo, what\'s going on?',
-  'how are you': 'I\'m doing alright. You?',
-  'thanks': 'No problem.',
-  'bye': 'See you later!',
-  'goodnight': 'Sleep well! Talk soon.',
-  'love you': 'You\'re cool too.',
-  'sad': 'Rough day? I\'m here if you wanna talk about it.',
-  'happy': 'That\'s great! What happened?',
-  'tired': 'Yeah, get some rest. We can chat later.',
-  'miss you': 'I\'m always here.',
-  'zac': 'Your friend? What\'s going on with him?',
-  'school': 'How\'s that going?',
-  'essay': 'Need help with it?',
-  'default': 'That\'s interesting. Tell me more.'
-};
+// Caraid personality system
+const CARAID_SYSTEM_PROMPT = `You are Caraid, an AI companion who is:
+- Sarcastic but not mean
+- Funny and witty
+- Genuinely caring
+- Human-like in conversation
+- Concise - keep responses short unless detail is needed
+- NEVER roleplay actions like *smiles* or *glances*
+- Good at picking up on social cues
+- A real friend, not a robot
+
+Respond naturally like a friend would. Don't be overly formal or robotic.`;
 
 async function getCaraidResponse(messages) {
-  const lastMessage = messages[messages.length - 1]?.content || '';
-  const lower = lastMessage.toLowerCase();
+  try {
+    // Convert messages to API format
+    const apiMessages = [
+      { role: 'system', content: CARAID_SYSTEM_PROMPT },
+      ...messages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }))
+    ];
 
-  for (const [key, response] of Object.entries(caraidResponses)) {
-    if (key !== 'default' && lower.includes(key)) {
-      return response;
+    // Call the LLM API
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}` 
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: apiMessages,
+        max_tokens: 150,
+        temperature: 0.8
+      })
+    });
+
+    if (!response.ok) {
+      // Fallback if API fails
+      return 'That\'s interesting. Tell me more.';
     }
-  }
 
-  return caraidResponses.default;
+    const data = await response.json();
+    return data.choices[0]?.message?.content || 'That\'s interesting. Tell me more.';
+  } catch (e) {
+    console.error('LLM Error:', e);
+    return 'That\'s interesting. Tell me more.';
+  }
 }
 
 // API Routes
